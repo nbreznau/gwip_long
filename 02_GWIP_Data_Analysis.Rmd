@@ -1,0 +1,196 @@
+---
+title: "GWIP"
+author: "Nate Breznau"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Global Work-Injury Policy Database Longitudinal (GWIP_Long) v1
+
+Sources:
+
+Each individual indicator:
+
+Welfare State Information Systems ([WeSIS](https://www.wesis.org/)) at the University of Bremen.
+
+Complete dataset:
+
+Harvard Dataverse
+
+
+
+
+## Setup
+
+```{r }
+
+packages <- c("tidyverse",
+              "pacman",
+              "here",
+              "ggplot2",
+              "ragg",
+              "knitr")
+
+pacman::p_load(packages, character.only = T)
+
+```
+
+
+## Data
+
+
+```{r}
+
+df <- read_csv(here("data", "df.csv"))
+
+# set coverage before the first observation to zero
+
+df <- df %>%
+  mutate(
+    cov_ii = if_else(is.na(cov_i), 0, cov_i)
+  )
+
+```
+
+## Regions
+
+```{r}
+df <- df %>%
+  mutate(
+    region = case_when(
+      # North America
+      iso3c %in% c("USA", "CAN", "PRI") ~ "North America",
+      
+      # Central America and Caribbean
+      iso3c %in% c("MEX", "GTM", "BLZ", "HND", "SLV", "NIC", "CRI", "PAN",
+                   "CUB", "DOM", "HTI", "JAM", "BRB", "TTO", "ATG", "BHS",
+                   "DMA", "GRD", "KNA", "LCA", "VCT") ~ "Central America",
+      
+      # South America
+      iso3c %in% c("ARG", "BRA", "CHL", "COL", "PER", "URY", "ECU", "BOL",
+                   "PRY", "VEN", "GUY", "SUR") ~ "South America",
+      
+      # Western Europe
+      iso3c %in% c("GBR", "FRA", "DEU", "NLD", "BEL", "CHE", "AUT", "IRL", "GRC", "CYP",
+                   "DNK", "NOR", "SWE", "FIN", "LUX", "ISL", "ESP", "PRT",
+                   "ITA", "AND", "MCO", "SMR", "LIE", "MLT") ~ "Western Europe",
+      
+      # Eastern Europe
+      iso3c %in% c("POL", "CZE", "SVK", "HUN", "ROU", "BGR", "HRV", "SVN",
+                   "EST", "LVA", "LTU", "RUS", "UKR", "BLR", "MDA", "SRB", "GEO", "AZE", "ARM",
+                   "MKD", "BIH", "ALB", "MNE", "KOS") ~ "Eastern Europe",
+      
+      # Northern Africa
+      iso3c %in% c("MAR", "DZA", "TUN", "LBY", "EGY", "SDN") ~ "Northern Africa",
+      
+      # Southern Africa
+      iso3c %in% c("ZMB", "ZWE", "ZAF", "NAM", "BWA", "LSO", "SWZ") ~ "Southern Africa",
+      
+      # Sub-Saharan Africa 
+      iso3c %in% c("BDI", "BEN", "BFA", "CIV", "CMR", "COD", "COG", "COM",
+                   "CPV", "DJI", "ETH", "GAB", "GHA", "GIN", "GMB", "GNB",
+                   "GNQ", "KEN", "LBR", "MDG", "MLI", "MOZ", "MRT", "MUS",
+                   "MWI", "NER", "NGA", "RWA", "SEN", "SLE", "SOM", "SSD", "AGO", "CAF",
+                   "STP", "SYC", "TCD", "TGO", "TZA", "UGA") ~ "Sub-Saharan Africa",
+      
+      # Middle East
+      iso3c %in% c("ARE", "BHR", "IRN", "IRQ", "ISR", "JOR", "KWT", "LBN",
+                   "OMN", "QAT", "SAU", "SYR", "TUR", "YEM") ~ "Middle East",
+      
+      # Central Asia
+      iso3c %in% c("KAZ", "UZB", "TJK", "KGZ", "TKM", "AFG") ~ "Central Asia",
+      
+      # South Asia
+      iso3c %in% c("BGD", "BTN", "IND", "LKA", "NPL", "PAK") ~ "South Asia",
+      
+      # South East Asia
+      iso3c %in% c("IDN", "KHM", "LAO", "MMR", "MYS", "PHL", "SGP", "THA",
+                   "TLS", "VNM", "BRN") ~ "South East Asia",
+      
+      # East Asia
+      iso3c %in% c("CHN", "JPN", "KOR", "MNG", "PRK", "TWN") ~ "East Asia",
+      
+      # Oceania
+      iso3c %in% c("AUS", "NZL", "FJI", "PNG", "SLB", "VUT", "WSM", "TON",
+                   "KIR", "NRU", "TUV", "FSM", "PLW", "MHL") ~ "Oceania",
+      
+      TRUE ~ "Other"
+    )
+  )
+```
+
+### Collapse
+
+Regional level by decade
+
+```{r}
+
+df <- df %>%
+  mutate(
+    decade = floor(year / 10) * 10  # bin years into decades
+  )
+
+df_region <- df %>%
+  group_by(region, decade) %>%
+  summarise(
+    mean_cov_ii = mean(cov_ii, na.rm = TRUE),  # average per region per decade
+    .groups = "drop"
+  )
+
+```
+
+## Fig 1. Coverage All Countries over Time
+
+```{r}
+
+agg_png(here("results", "Fig1.png"), res = 144, height = 1000, width = 750)
+
+ggplot(df_region, aes(x = decade, y = mean_cov_ii, color = region, group = region)) +
+  geom_line(size = 1.2) +
+  geom_text(data = df_region %>% group_by(region) %>% filter(decade == max(decade)),
+            aes(label = region),
+            hjust = -0.1,
+            vjust = 0.5,
+            size = 3,
+            show.legend = FALSE) +
+  scale_x_continuous(
+    limits = c(1870, NA),
+    expand = expansion(mult = c(0.01, 0.15))
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",  # no legend, use direct labels
+    plot.title = element_text(hjust = 0.5)
+  ) +
+  labs(
+    title = "Average Work-Injury Policy Coverage by Region Over Time",
+    x = "Decade",
+    y = "Coverage (%)"
+  )
+
+dev.off()
+
+include_graphics(here("results", "Fig1.png"))
+
+
+```
+
+
+## Citations
+
+```{r cites}
+
+packages %>%
+  map(citation) %>%
+  print(style = "text")
+
+```
+
+## Colophon
+
+```{r colo}
+
+sessionInfo()
+
+```
+

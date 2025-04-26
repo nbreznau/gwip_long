@@ -1,0 +1,210 @@
+---
+title: "GWIP"
+author: "Nate Breznau"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+Global Work-Injury Policy Database Longitudinal (GWIP_Long) v1
+
+Sources:
+
+Each individual indicator:
+
+Welfare State Information Systems ([WeSIS](https://www.wesis.org/)) at the University of Bremen.
+
+Complete dataset:
+
+Harvard Dataverse
+
+## Setup
+
+```{r }
+
+packages <- c("tidyverse",
+              "pacman",
+              "here",
+              "readxl",
+              "countrycode",
+              "zoo")
+
+pacman::p_load(packages, character.only = T)
+
+```
+
+
+## Data
+
+### GWIP
+
+```{r}
+
+df_gwip <- read_csv(here("data", "gwip_long_v1.csv"))
+
+df_cov <- df_gwip %>%
+  mutate(iso3c = countrycode(country, "country.name", "iso3c"),
+         cov = labor_workinjury_coverage_pct_lf,
+         gen = as.numeric(labor_workinjury_replacement_rate_temp)) %>%
+  select(iso3c, country, year, cov, gen)
+
+```
+
+### Maddison
+
+Bolt and Van Zanden (2024), "Maddison style estimates of the evolution of the world economy: A new 2023 update", Journal of Economic Surveys, 1–41
+
+#### GDPpc
+
+```{r}
+
+df_mpd_gdp <- read_xlsx(here("data", "mpd2023_web.xlsx"), sheet = "GDPpc", skip = 2)
+
+df_mpd_gdp <- df_mpd_gdp %>% filter(!is.na(year))
+
+# Reshape long
+df_gdp <- df_mpd_gdp %>%
+  pivot_longer(
+    cols = -year,
+    names_to = "iso3c",
+    values_to = "gdp"
+  ) %>%
+  filter(!is.na(gdp)) %>%
+  as.data.frame()
+
+```
+
+#### Population
+
+```{r}
+
+df_mpd_pop <- read_xlsx(here("data", "mpd2023_web.xlsx"), sheet = "Population", skip = 2)
+
+df_mpd_pop <- df_mpd_pop %>% filter(!is.na(year))
+
+df_pop <- df_mpd_pop %>%
+  pivot_longer(
+    cols = -year,
+    names_to = "iso3c",
+    values_to = "pop"
+  ) %>%
+  filter(!is.na(pop)) %>%
+  as.data.frame()
+
+```
+
+## Full Data
+
+### Combine
+
+Ensure that there is a row for every 10 years for every country since 1880
+
+```{r}
+
+df <- df_cov %>%
+  full_join(df_gdp, by = c("iso3c", "year")) %>%
+  full_join(df_pop, by = c("iso3c", "year"))
+
+years <- seq(1880, 2020, by = 10)
+
+df_decades <- expand.grid(
+  iso3c = unique(df$iso3c),
+  year = years
+)
+
+df <- full_join(df_decades, df, by = c("iso3c", "year"))
+
+df <- df %>% arrange(iso3c, year)
+```
+
+### Interpolate
+
+Linear interpolation between non-missing values for pop and gdp
+
+Last observation carried forward for cov and gen
+
+```{r}
+
+# remove countries with no GWIP data
+
+df <- df %>%
+  # Change -99 to NA
+  mutate(across(where(is.numeric), ~ na_if(., -99))) %>%
+  
+  #Drop countries with missing cov and gen
+  group_by(iso3c) %>%
+  filter(!(all(is.na(cov)) & all(is.na(gen)))) %>%
+  ungroup() %>%
+  as.data.frame()
+
+df <- df %>%
+  group_by(iso3c) %>%
+  arrange(year) %>%
+  mutate(
+    pop_i = na.approx(pop, x = year, na.rm = FALSE),
+    gdp_i = na.approx(gdp, x = year, na.rm = F)
+  ) %>%
+  arrange(iso3c, year) %>%
+  ungroup() %>%
+  as.data.frame()
+
+df <- df %>%
+  group_by(iso3c) %>%
+  arrange(year) %>%
+  mutate(
+    first_nonmissing_year = min(year[!is.na(cov)], na.rm = TRUE),
+    cov_i = if_else(
+      year < first_nonmissing_year, 
+      NA_real_,  # Keep NA before first observation
+      na.locf(cov, na.rm = FALSE)  # Carry forward after first observation
+    )
+  ) %>%
+  select(-first_nonmissing_year) %>%  # Clean up
+  ungroup()
+
+df <- df %>%
+  group_by(iso3c) %>%
+  arrange(year) %>%
+  mutate(
+    first_nonmissing_year = min(year[!is.na(gen)], na.rm = TRUE),
+    gen_i = if_else(
+      year < first_nonmissing_year, 
+      NA_real_, 
+      na.locf(gen, na.rm = FALSE)  
+    )
+  ) %>%
+  select(-first_nonmissing_year) %>%  # Clean up
+  ungroup() %>%
+  arrange(iso3c, year) %>%
+  as.data.frame()
+
+# fill in missing country names
+df <- df %>%
+  mutate(country = countryname(iso3c, "iso3c", "country.name"))
+
+```
+
+### Save
+
+```{r}
+write.csv(df, here("data", "df.csv"), row.names = F)
+```
+
+
+## Citations
+
+```{r cites}
+
+packages %>%
+  map(citation) %>%
+  print(style = "text")
+
+```
+
+## Colophon
+
+```{r colo}
+
+sessionInfo()
+
+```
+
