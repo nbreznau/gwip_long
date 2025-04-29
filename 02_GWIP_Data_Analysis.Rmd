@@ -143,7 +143,8 @@ df_country <- df %>%
 df_reg <- subset(df, year == 2020, select = c(colonial_history, region, iso3c))
 
 df_country <- df_country %>%
-  left_join(df_reg, by = "iso3c")
+  left_join(df_reg, by = "iso3c") %>%
+  mutate(gen_ii = ifelse(gen_i == "NaN", 0, gen_i))
 
 df_region <- df_country %>%
   group_by(region, decade) %>%
@@ -154,11 +155,12 @@ df_region <- df_country %>%
   )
 
 df_colonial <- df_country %>%
-  #subset(decade > 2009) %>%
   group_by(colonial_history, decade) %>%
   summarise(
     mean_cov_ii = mean(cov_ii, na.rm = TRUE), 
-    mean_gen_i = mean(gen_i, na.rm = TRUE),
+    se_cov_ii = sd(cov_ii, na.rm = TRUE) / sqrt(sum(!is.na(cov_ii))),
+    mean_gen_ii = mean(gen_ii, na.rm = TRUE),
+    se_gen_ii = sd(gen_ii, na.rm = TRUE) / sqrt(sum(!is.na(gen_ii))),
     pop = sum(pop, na.rm = TRUE), 
     .groups = "drop"
   )
@@ -224,6 +226,83 @@ ggplot(df_region, aes(x = decade, y = mean_cov_ii, color = region, group = regio
 dev.off()
 
 include_graphics(here("results", "Fig1.png"))
+
+
+```
+
+
+## Fig 2. Cov and Gen British/English Colonies
+
+### Prep
+
+```{r}
+
+# SE bands don’t go below 0, better visually
+df_plot <- df_colonial %>%
+  subset(!colonial_history %in%  c("Various", "Germany", "Belgium", "Netherlands", "Portugal")) %>%
+  mutate(
+    cov_ii_lower = pmax(0, mean_cov_ii - se_cov_ii),
+    cov_ii_upper = mean_cov_ii + se_cov_ii,
+    gen_ii_lower  = pmax(0, mean_gen_ii - se_gen_ii),
+    gen_ii_upper  = mean_gen_ii + se_gen_ii
+  )
+```
+
+### Plot
+
+```{r}
+
+agg_png(here("results", "Fig2.png"), res = 144, height = 800, width = 800)
+
+# Plot
+ggplot() +
+  # cov_ii: solid lines with SE ribbon
+  geom_ribbon(
+    data = df_plot,
+    aes(x = decade, ymin = cov_ii_lower, ymax = cov_ii_upper, group = colonial_history),
+    fill = "grey80", alpha = 0.4
+  ) +
+  geom_line(
+    data = df_plot,
+    aes(x = decade, y = mean_cov_ii, color = colonial_history, group = colonial_history),
+    size = 1
+  ) +
+
+  # gen_ii: dashed lines with SE ribbon
+  geom_ribbon(
+    data = df_plot,
+    aes(x = decade, ymin = gen_ii_lower, ymax = gen_ii_upper, group = colonial_history),
+    fill = "grey80", alpha = 0.4
+  ) +
+  geom_line(
+    data = df_plot,
+    aes(x = decade, y = mean_gen_ii, color = colonial_history, group = colonial_history),
+    size = 1, linetype = "dashed"
+  ) +
+  annotate("text",
+         x = 2000, y = 7,
+         label = "Coverage\n(solid lines)",
+         size = 3.5, color = "grey25") +
+  annotate("text",
+         x = 1930, y = 80,
+         label = "Replacement Rate\n(dashed lines)",
+         size = 3.5, color = "grey25") +
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  scale_x_continuous(
+    limits = c(1870, NA),
+    expand = expansion(mult = c(0.01, 0.15))
+  ) +
+  labs(
+    x = "Decade",
+    y = "Percentage Score",
+    color = "Colonial History",
+    title = "Trends in Coverage and Generosity by Colonial History"
+  ) +
+  theme_classic()
+
+dev.off()
+
+include_graphics(here("results", "Fig2.png"))
 
 
 ```
