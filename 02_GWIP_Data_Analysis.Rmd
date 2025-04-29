@@ -54,6 +54,8 @@ df <- df %>%
 
 ## Regions
 
+### Encode
+
 ```{r}
 df <- df %>%
   mutate(
@@ -130,14 +132,64 @@ df <- df %>%
     decade = floor(year / 10) * 10  # bin years into decades
   )
 
-df_region <- df %>%
+# First collapse to have only one average per country
+df_country <- df %>%
+  group_by(iso3c, decade) %>%
+  summarise(cov_ii = mean(cov_ii, na.rm = T),
+            gen_i = mean(gen_i, na.rm = T),
+            pop = mean(pop_i, na.rm = T)) %>%
+  ungroup()
+
+df_reg <- subset(df, year == 2020, select = c(colonial_history, region, iso3c))
+
+df_country <- df_country %>%
+  left_join(df_reg, by = "iso3c")
+
+df_region <- df_country %>%
   group_by(region, decade) %>%
   summarise(
-    mean_cov_ii = mean(cov_ii, na.rm = TRUE),  # average per region per decade
+    mean_cov_ii = mean(cov_ii, na.rm = TRUE),  
+    pop = sum(pop, na.rm = TRUE), # average per region per decade
+    .groups = "drop"
+  )
+
+df_colonial <- df_country %>%
+  #subset(decade > 2009) %>%
+  group_by(colonial_history, decade) %>%
+  summarise(
+    mean_cov_ii = mean(cov_ii, na.rm = TRUE), 
+    mean_gen_i = mean(gen_i, na.rm = TRUE),
+    pop = sum(pop, na.rm = TRUE), 
     .groups = "drop"
   )
 
 ```
+
+## Population Estimates
+
+```{r}
+
+df_reg_pop <- subset(df_region, decade > 2011)
+
+df_reg_pop <- df_reg_pop %>%
+  mutate(pop_pct = round((pop/sum(df_reg_pop$pop))*100),2)
+
+df_south_pop <- subset(df, year == 2020) %>%
+  group_by(global_south) %>%
+  mutate(gdp_notpc = gdp*pop) %>%
+  summarise(
+    pop = sum(pop_i, na.rm = T),
+    gdp = sum(gdp_notpc, na.rm = T),
+    cov = mean(cov_ii, na.rm = T),
+    gen = mean(gen_i, na.rm = T)
+  ) %>%
+  ungroup() %>%
+  mutate(gdppc = gdp/pop)
+
+kableExtra::kable(df_south_pop)
+
+```
+
 
 ## Fig 1. Coverage All Countries over Time
 
@@ -160,12 +212,13 @@ ggplot(df_region, aes(x = decade, y = mean_cov_ii, color = region, group = regio
   theme_minimal() +
   theme(
     legend.position = "none",  # no legend, use direct labels
-    plot.title = element_text(hjust = 0.5)
+    plot.title = element_text(hjust = 0.5),
+    plot.margin = unit(10,70,10,10)
   ) +
   labs(
     title = "Average Work-Injury Policy Coverage by Region Over Time",
     x = "Decade",
-    y = "Coverage (%)"
+    y = "Coverage (Avg. %)"
   )
 
 dev.off()

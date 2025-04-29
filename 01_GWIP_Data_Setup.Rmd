@@ -47,6 +47,20 @@ df_cov <- df_gwip %>%
          gen = as.numeric(labor_workinjury_replacement_rate_temp)) %>%
   select(iso3c, country, year, cov, gen)
 
+# get colonial codes from gwip v3
+df_col <- read_csv(here("data", "gwip_v3.csv")) %>%
+  mutate(iso3c = countrycode(cow_code, "cown", "iso3c"),
+         iso3c = ifelse(cow_code == 345, "SRB",
+                 ifelse(cow_code == 817, "VNM",
+                 ifelse(cow_code == 6, "PRI", iso3c)))) %>%
+  select(iso3c, colonial_history) 
+
+# global south codes
+df_south <- read_csv(here("data", "global_south.csv")) %>%
+  mutate(iso3c = countrycode(Country, "country.name", "iso3c"),
+         global_south = South) %>%
+  select(iso3c, global_south)
+
 ```
 
 ### Maddison
@@ -102,7 +116,7 @@ Ensure that there is a row for every 10 years for every country since 1880
 
 df <- df_cov %>%
   full_join(df_gdp, by = c("iso3c", "year")) %>%
-  full_join(df_pop, by = c("iso3c", "year"))
+  full_join(df_pop, by = c("iso3c", "year")) 
 
 years <- seq(1880, 2020, by = 10)
 
@@ -113,7 +127,11 @@ df_decades <- expand.grid(
 
 df <- full_join(df_decades, df, by = c("iso3c", "year"))
 
-df <- df %>% arrange(iso3c, year)
+df <- df %>%
+  left_join(df_col, by = c("iso3c")) %>% 
+  left_join(df_south, by = c("iso3c")) %>%
+  arrange(iso3c, year) 
+
 ```
 
 ### Interpolate
