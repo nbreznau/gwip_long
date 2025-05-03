@@ -29,7 +29,8 @@ packages <- c("tidyverse",
               "here",
               "ggplot2",
               "ragg",
-              "knitr")
+              "knitr",
+              "ggpubr")
 
 pacman::p_load(packages, character.only = T)
 
@@ -49,6 +50,7 @@ df <- df %>%
   mutate(
     cov_ii = if_else(is.na(cov_i), 0, cov_i)
   )
+
 
 ```
 
@@ -119,6 +121,8 @@ df <- df %>%
       TRUE ~ "Other"
     )
   )
+
+
 ```
 
 ### Collapse
@@ -137,7 +141,8 @@ df_country <- df %>%
   group_by(iso3c, decade) %>%
   summarise(cov_ii = mean(cov_ii, na.rm = T),
             gen_i = mean(gen_i, na.rm = T),
-            pop = mean(pop_i, na.rm = T)) %>%
+            pop = mean(pop_i, na.rm = T),
+            slave_trade_all = mean(slave_trade_all, na.rm = T)) %>%
   ungroup()
 
 df_reg <- subset(df, year == 2020, select = c(colonial_history, region, iso3c))
@@ -146,11 +151,16 @@ df_country <- df_country %>%
   left_join(df_reg, by = "iso3c") %>%
   mutate(gen_ii = ifelse(gen_i == "NaN", 0, gen_i))
 
+df_africa <- df_country %>%
+  subset(region == "Sub-Saharan Africa" | region == "Southern Africa") %>%
+  subset(decade > 1900) %>%
+  ungroup()
+
 df_region <- df_country %>%
   group_by(region, decade) %>%
   summarise(
     mean_cov_ii = mean(cov_ii, na.rm = TRUE),  
-    pop = sum(pop, na.rm = TRUE), # average per region per decade
+    pop = sum(pop, na.rm = TRUE), 
     .groups = "drop"
   )
 
@@ -166,6 +176,30 @@ df_colonial <- df_country %>%
   )
 
 ```
+
+
+### Correlation by decade
+
+```{r}
+# Compute log-transformed slave trade levels following Nunn
+df_africa <- df_africa %>%
+  mutate(log_slave_trade = log1p(slave_trade_all))  
+
+
+cor_df <- df_africa %>%
+  filter(decade > 1950) %>%
+  group_by(decade) %>%
+  summarise(
+    cor_cov = cor(cov_ii, log_slave_trade, use = "complete.obs"),
+    cor_gen = cor(gen_ii, log_slave_trade, use = "complete.obs")
+  ) %>%
+  mutate(
+    label_cov = sprintf("%.2f", cor_cov),
+    label_gen = sprintf("%.2f", cor_gen)
+  )
+
+```
+
 
 ## Population Estimates
 
@@ -193,6 +227,7 @@ kableExtra::kable(df_south_pop)
 ```
 
 
+
 ## Fig 1. Coverage All Countries over Time
 
 ```{r}
@@ -215,7 +250,7 @@ ggplot(df_region, aes(x = decade, y = mean_cov_ii, color = region, group = regio
   theme(
     legend.position = "none",  # no legend, use direct labels
     plot.title = element_text(hjust = 0.5),
-    plot.margin = unit(10,70,10,10)
+    plot.margin = margin(10,70,10,10)
   ) +
   labs(
     title = "Average Work-Injury Policy Coverage by Region Over Time",
@@ -303,6 +338,79 @@ ggplot() +
 dev.off()
 
 include_graphics(here("results", "Fig2.png"))
+
+
+```
+
+
+## Fig 3. African Slave Trade and GWIP
+
+### Setup Plots
+
+```{r}
+
+plot_cov <- ggplot(df_africa, aes(x = decade, y = cov_ii, group = iso3c, color = log_slave_trade)) +
+  geom_line(size = 0.8) +
+  scale_color_gradient(low = "grey80", high = "darkred", name = "Log Slave Trade") +
+  scale_y_continuous(labels = scales::percent_format(scale = 1),
+                     limits = c(-6, NA)) +  
+    scale_x_continuous(breaks = seq(1880, 2020, by = 20)) +
+
+  labs(
+    x = "Decade",
+    y = "Labor Force Coverage (%)"
+  ) +
+  geom_text(
+    data = cor_df,
+    aes(x = decade, y = -4.5, label = label_cov),
+    inherit.aes = FALSE,
+    size = 3.5,
+    hjust = 0.5,
+    angle = 45,
+    color = "grey20"
+  ) +
+  annotate("text", x = 1932, y = -4.5, label = "Correlation = ", color = "grey20") +
+  theme_classic() + 
+  theme(legend.position = "none")
+
+plot_gen <- ggplot(df_africa, aes(x = decade, y = gen_ii, group = iso3c, color = log_slave_trade)) +
+  geom_line(size = 0.8) +
+  scale_color_gradient(low = "grey80", high = "darkred", name = "Log Slave Trade") +
+  scale_y_continuous(labels = scales::percent_format(scale = 1),
+                     limits = c(-6, NA)) +
+  scale_x_continuous(breaks = seq(1880, 2020, by = 20)) +
+
+  labs(
+    x = "Decade",
+    y = "Replacement Rate (%)"
+  ) +
+  geom_text(
+    data = cor_df,
+    aes(x = decade, y = -4.5, label = label_gen),
+    inherit.aes = FALSE,
+    size = 3.5,
+    hjust = 0.5,
+    angle = 45,
+    color = "grey20"
+  ) +
+  theme_classic() +
+  theme(legend.position = "none")
+
+
+```
+
+### Plot Arrange
+
+```{r}
+agg_png(here("results", "Fig3.png"), res = 144, height = 750, width = 1200)
+
+ggarrange(plot_cov, plot_gen,
+          common.legend = T,
+          legend = "bottom") 
+
+dev.off()
+
+include_graphics(here("results", "Fig3.png"))
 
 
 ```

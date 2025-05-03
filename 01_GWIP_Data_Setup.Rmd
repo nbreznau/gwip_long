@@ -106,6 +106,19 @@ df_pop <- df_mpd_pop %>%
 
 ```
 
+### Nunn Slave Trade
+
+Nunn, Nathan. 2008. “The Long-Term Effects of Africa’s Slave Trades.” The Quarterly Journal of Economics 123(1):139–76. doi: 10.1162/qjec.2008.123.1.139.
+
+
+```{r}
+
+df_trade <- read_csv(here("data", "nunn_slave_trade.csv")) %>%
+  mutate(iso3c = ifelse(iso3c == "ZAR", "COD", iso3c)) %>%
+  dplyr::select(iso3c, slave_trade_all)
+
+```
+
 ## Full Data
 
 ### Combine
@@ -130,6 +143,7 @@ df <- full_join(df_decades, df, by = c("iso3c", "year"))
 df <- df %>%
   left_join(df_col, by = c("iso3c")) %>% 
   left_join(df_south, by = c("iso3c")) %>%
+  left_join(df_trade, by = c("iso3c")) %>%
   arrange(iso3c, year) 
 
 ```
