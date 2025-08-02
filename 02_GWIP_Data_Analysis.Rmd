@@ -11,12 +11,13 @@ Sources:
 
 Each individual indicator:
 
-Welfare State Information Systems ([WeSIS](https://www.wesis.org/)) at the University of Bremen.
+Welfare State Information Systems source: ([WeSIS](https://www.wesis.org/)) at the University of Bremen.
 
-Complete dataset:
+Harvard Dataverse source:
+[GWIP_long](https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/IVKYIE) Harvard Dataverse 
 
-Harvard Dataverse
-
+Enslaved Human Capital extraction source:
+Nunn, Nathan. 2008. “The Long-Term Effects of Africa’s Slave Trades.” The Quarterly Journal of Economics 123(1):139–76. doi:10.1162/qjec.2008.123.1.139.
 
 
 
@@ -350,8 +351,11 @@ include_graphics(here("results", "Fig2.png"))
 ```{r}
 
 plot_cov <- ggplot(df_africa, aes(x = decade, y = cov_ii, group = iso3c, color = log_slave_trade)) +
-  geom_line(size = 0.8) +
-  scale_color_gradient(low = "grey80", high = "darkred", name = "Log Slave Trade") +
+  geom_line(size = 0.8, alpha = 0.8) +
+  scale_color_gradient2(low = "#FDE725", 
+                        mid = "#1F9E89", 
+                        high = "#3E4989", 
+                        midpoint = 7, name = "Log Slave Trade") +
   scale_y_continuous(labels = scales::percent_format(scale = 1),
                      limits = c(-6, NA)) +  
     scale_x_continuous(breaks = seq(1880, 2020, by = 20)) +
@@ -374,8 +378,11 @@ plot_cov <- ggplot(df_africa, aes(x = decade, y = cov_ii, group = iso3c, color =
   theme(legend.position = "none")
 
 plot_gen <- ggplot(df_africa, aes(x = decade, y = gen_ii, group = iso3c, color = log_slave_trade)) +
-  geom_line(size = 0.8) +
-  scale_color_gradient(low = "grey80", high = "darkred", name = "Log Slave Trade") +
+  geom_line(size = 0.8, alpha = 0.8) +
+  scale_color_gradient2(low = "#FDE725", 
+                        mid = "#1F9E89", 
+                        high = "#3E4989", 
+                        midpoint = 7, name = "Log Slave Trade") +
   scale_y_continuous(labels = scales::percent_format(scale = 1),
                      limits = c(-6, NA)) +
   scale_x_continuous(breaks = seq(1880, 2020, by = 20)) +
