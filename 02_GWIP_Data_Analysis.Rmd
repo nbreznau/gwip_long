@@ -31,7 +31,8 @@ packages <- c("tidyverse",
               "ggplot2",
               "ragg",
               "knitr",
-              "ggpubr")
+              "ggpubr",
+              "cowplot")
 
 pacman::p_load(packages, character.only = T)
 
@@ -231,6 +232,8 @@ kableExtra::kable(df_south_pop)
 
 ## Fig 1. Coverage All Countries over Time
 
+### Color, Appendix Only
+
 ```{r}
 
 agg_png(here("results", "Fig1.png"), res = 144, height = 1000, width = 750)
@@ -240,14 +243,97 @@ ggplot(df_region, aes(x = decade, y = mean_cov_ii, color = region, group = regio
   geom_text(data = df_region %>% group_by(region) %>% filter(decade == max(decade)),
             aes(label = region),
             hjust = -0.1,
-            vjust = 0.5,
+            vjust = c(0.8, # C Amer
+                      -0.5, # C Asia
+                      0.2, # E Asia
+                      -0.1, # E Eur
+                      -0.6, # M East
+                      0, # N Am
+                      0.4, # N Afric
+                      0.3, # Oceana
+                      -0.2, # S Am
+                      0, # S Asia
+                      1, #SE Asia
+                      0,
+                      0,
+                      0 # W Eur
+                      ),
             size = 3,
             show.legend = FALSE) +
   scale_x_continuous(
-    limits = c(1870, NA),
+    limits = c(1870, max(df_region$decade, na.rm = T) + 40),
+    breaks = seq(1880, 2020, by = 20),
     expand = expansion(mult = c(0.01, 0.15))
   ) +
-  theme_minimal() +
+  theme_classic() +
+  theme(
+    legend.position = "none",  # no legend, use direct labels
+    plot.title = element_text(hjust = 0.5),
+    plot.margin = margin(10,70,10,10)
+  ) +
+  labs(
+    title = "Average Work-Injury Policy Coverage by Region Over Time",
+    x = "Decade",
+    y = "Coverage (Avg. %)"
+  ) 
+
+dev.off()
+
+include_graphics(here("results", "Fig1.png"))
+
+
+```
+
+### Greyscale, Book Chapter
+
+```{r}
+
+agg_png(here("results", "Fig1_grey.png"), res = 144, height = 1000, width = 750)
+
+ggplot(df_region, aes(x = decade, y = mean_cov_ii, color = region, group = region)) +
+  geom_line(size = 1.2) +
+  geom_text(data = df_region %>% group_by(region) %>% filter(decade == max(decade)),
+            aes(label = region),
+            hjust = -0.1,
+            vjust = c(0.8, # C Amer
+                      -0.5, # C Asia
+                      0.2, # E Asia
+                      -0.1, # E Eur
+                      -0.6, # M East
+                      0, # N Am
+                      0.4, # N Afric
+                      0.3, # Oceana
+                      -0.2, # S Am
+                      0, # S Asia
+                      1, #SE Asia
+                      0,
+                      0,
+                      0 # W Eur
+                      ),
+            size = 3,
+            show.legend = FALSE) +
+  scale_x_continuous(
+    limits = c(1870, max(df_region$decade, na.rm = T) + 40),
+    breaks = seq(1880, 2020, by = 20),
+    expand = expansion(mult = c(0.01, 0.15))
+  ) +
+  scale_color_manual(values = c(
+    "Central America" = "grey55",
+    "Central Asia"   = "grey75",    
+    "East Asia"       = "grey65",   
+    "Eastern Europe"   = "grey55", 
+    "Middle East"      = "grey45",  
+    "North America"    = "grey35",  
+    "Northern Africa"   = "grey25", 
+    "Oceania"           = "grey33",
+    "South America"      = "grey30",
+    "South Asia"         = "grey70",
+    "South East Asia"    = "grey60",
+    "Southern Africa"   = "grey50",
+    "Sub-Saharan Africa" = "grey40",
+    "Western Europe" = "grey55"
+  )) +
+  theme_classic() +
   theme(
     legend.position = "none",  # no legend, use direct labels
     plot.title = element_text(hjust = 0.5),
@@ -261,15 +347,15 @@ ggplot(df_region, aes(x = decade, y = mean_cov_ii, color = region, group = regio
 
 dev.off()
 
-include_graphics(here("results", "Fig1.png"))
-
+include_graphics(here("results", "Fig1_grey.png"))
 
 ```
 
-
 ## Fig 2. Cov and Gen British/English Colonies
 
-### Prep
+### Color Version, Appendix Only
+
+#### Prep
 
 ```{r}
 
@@ -284,7 +370,7 @@ df_plot <- df_colonial %>%
   )
 ```
 
-### Plot
+#### Plot
 
 ```{r}
 
@@ -342,11 +428,82 @@ include_graphics(here("results", "Fig2.png"))
 
 
 ```
+### Greyscale, Book Chapter
+
+#### Prep
+
+```{r}
+# Define line styles
+line_styles <- c(
+  "France" = "solid",
+  "UK" = "dashed",
+  "Spain" = "dotted",
+  "Russian" = "dotdash",
+  "None" = "longdash"
+)
+
+
+df_plot$colonial_history <- factor(df_plot$colonial_history, levels = names(line_styles))
+
+
+p1 <- ggplot(df_plot, aes(x = decade, y = mean_cov_ii, group = colonial_history)) +
+  geom_ribbon(aes(ymin = cov_ii_lower, ymax = cov_ii_upper), fill = "grey80", alpha = 0.4) +
+  geom_line(aes(linetype = colonial_history), size = 1, color = "black") +
+  scale_linetype_manual(values = line_styles) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  scale_x_continuous(limits = c(1870, NA), expand = expansion(mult = c(0.01, 0.15))) +
+  labs(x = "", y = "Percentage Score", linetype = "Colonial History", title = "Coverage") +
+  theme_classic() +
+  theme(
+  legend.position = "bottom",
+  legend.key.width = unit(1.5, "cm"),  # Increase line length in legend
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank()
+)
+
+p2 <- ggplot(df_plot, aes(x = decade, y = mean_gen_ii, group = colonial_history)) +
+  geom_ribbon(aes(ymin = gen_ii_lower, ymax = gen_ii_upper), fill = "grey80", alpha = 0.4) +
+  geom_line(aes(linetype = colonial_history), size = 1, color = "black") +
+  scale_linetype_manual(values = line_styles) +
+  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  scale_x_continuous(limits = c(1870, NA), expand = expansion(mult = c(0.01, 0.15))) +
+  labs(x = "", y = "Percentage Score", linetype = "Colonial History", title = "Replacement Rate") +
+  theme_classic() +
+  theme(
+  legend.position = "bottom",
+  legend.key.width = unit(1.5, "cm"),
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank()
+)
+
+
+final_plot <- ggarrange(
+  p1, p2,
+  ncol = 2,
+  common.legend = TRUE,
+  legend = "bottom"
+)
+```
+
+#### Plot
+
+```{r}
+
+agg_png(here("results", "Fig2_grey.png"), res = 144, height = 800, width = 1200)
+print(final_plot)
+dev.off()
+
+
+include_graphics(here("results", "Fig2_grey.png"))
+
+```
 
 
 ## Fig 3. African Slave Trade and GWIP
 
 ### Setup Plots
+
+#### Color Version, Appendix Only
 
 ```{r}
 
@@ -406,7 +563,71 @@ plot_gen <- ggplot(df_africa, aes(x = decade, y = gen_ii, group = iso3c, color =
 
 ```
 
+#### Greyscale, Book Chapter
+
+```{r}
+
+plot_cov_grey <- ggplot(df_africa, aes(x = decade, y = cov_ii, group = iso3c, color = log_slave_trade)) +
+  geom_line(size = 0.8, alpha = 0.8) +
+  scale_color_gradient2(low = "grey80", 
+                        mid = "grey55", 
+                        high = "grey25", 
+                        midpoint = 7, name = "Log Slave Trade") +
+  scale_y_continuous(labels = scales::percent_format(scale = 1),
+                     limits = c(-6, NA)) +  
+    scale_x_continuous(breaks = seq(1880, 2020, by = 20)) +
+
+  labs(
+    x = "Decade",
+    y = "Labor Force Coverage (%)"
+  ) +
+  geom_text(
+    data = cor_df,
+    aes(x = decade, y = -4.5, label = label_cov),
+    inherit.aes = FALSE,
+    size = 3.5,
+    hjust = 0.5,
+    angle = 45,
+    color = "grey20"
+  ) +
+  annotate("text", x = 1932, y = -4.5, label = "Correlation = ", color = "grey20") +
+  theme_classic() + 
+  theme(legend.position = "none")
+
+plot_gen_grey <- ggplot(df_africa, aes(x = decade, y = gen_ii, group = iso3c, color = log_slave_trade)) +
+  geom_line(size = 0.8, alpha = 0.8) +
+  scale_color_gradient2(low = "grey80", 
+                        mid = "grey55", 
+                        high = "grey25", 
+                        midpoint = 7, name = "Log Slave Trade") +
+  scale_y_continuous(labels = scales::percent_format(scale = 1),
+                     limits = c(-6, NA)) +
+  scale_x_continuous(breaks = seq(1880, 2020, by = 20)) +
+
+  labs(
+    x = "Decade",
+    y = "Replacement Rate (%)"
+  ) +
+  geom_text(
+    data = cor_df,
+    aes(x = decade, y = -4.5, label = label_gen),
+    inherit.aes = FALSE,
+    size = 3.5,
+    hjust = 0.5,
+    angle = 45,
+    color = "grey20"
+  ) +
+  theme_classic() +
+  theme(legend.position = "none")
+
+
+```
+
+
+
 ### Plot Arrange
+
+#### Color
 
 ```{r}
 agg_png(here("results", "Fig3.png"), res = 144, height = 750, width = 1200)
@@ -419,10 +640,22 @@ dev.off()
 
 include_graphics(here("results", "Fig3.png"))
 
-
 ```
 
+#### Grey
 
+```{r}
+agg_png(here("results", "Fig3_grey.png"), res = 144, height = 750, width = 1200)
+
+ggarrange(plot_cov_grey, plot_gen_grey,
+          common.legend = T,
+          legend = "bottom") 
+
+dev.off()
+
+include_graphics(here("results", "Fig3_grey.png"))
+
+```
 ## Citations
 
 ```{r cites}
