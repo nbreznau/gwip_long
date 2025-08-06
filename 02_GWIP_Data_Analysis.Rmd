@@ -288,9 +288,9 @@ include_graphics(here("results", "Fig1.png"))
 
 ```{r}
 
-agg_png(here("results", "Fig1_grey.png"), res = 144, height = 1000, width = 750)
+agg_png(here("results", "Fig1_grey.png"), res = 144, height = 1000, width = 1000)
 
-ggplot(df_region, aes(x = decade, y = mean_cov_ii, color = region, group = region)) +
+ggplot(df_region, aes(x = decade, y = mean_cov_ii, color = region, group = region, linetype = region)) +
   geom_line(size = 1.2) +
   geom_text(data = df_region %>% group_by(region) %>% filter(decade == max(decade)),
             aes(label = region),
@@ -319,7 +319,7 @@ ggplot(df_region, aes(x = decade, y = mean_cov_ii, color = region, group = regio
   ) +
   scale_color_manual(values = c(
     "Central America" = "grey55",
-    "Central Asia"   = "grey75",    
+    "Central Asia"   = "grey70",    
     "East Asia"       = "grey65",   
     "Eastern Europe"   = "grey55", 
     "Middle East"      = "grey45",  
@@ -332,6 +332,22 @@ ggplot(df_region, aes(x = decade, y = mean_cov_ii, color = region, group = regio
     "Southern Africa"   = "grey50",
     "Sub-Saharan Africa" = "grey40",
     "Western Europe" = "grey55"
+  )) +
+  scale_linetype_manual(values = c(
+    "Central America" = "dashed",
+    "Central Asia" = "solid",
+    "East Asia" = "solid",
+    "Eastern Europe" = "dashed",
+    "Middle East" = "dotted",
+    "North America" = "dashed",
+    "Northern Africa" = "solid",
+    "Oceania" = "dotted",
+    "South America" = "dashed",
+    "South Asia" = "solid",
+    "South East Asia" = "dashed",
+    "Southern Africa" = "dashed",
+    "Sub-Saharan Africa" = "dotted",
+    "Western Europe" = "solid"
   )) +
   theme_classic() +
   theme(
