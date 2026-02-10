@@ -310,7 +310,7 @@ ggplot(df_region, aes(x = decade, y = mean_cov_ii, color = region, group = regio
                       0,
                       0 # W Eur
                       ),
-            size = 3,
+            size = 3.2,
             show.legend = FALSE) +
   scale_x_continuous(
     limits = c(1870, max(df_region$decade, na.rm = T) + 40),
@@ -318,20 +318,20 @@ ggplot(df_region, aes(x = decade, y = mean_cov_ii, color = region, group = regio
     expand = expansion(mult = c(0.01, 0.15))
   ) +
   scale_color_manual(values = c(
-    "Central America" = "grey55",
-    "Central Asia"   = "grey70",    
-    "East Asia"       = "grey65",   
-    "Eastern Europe"   = "grey55", 
-    "Middle East"      = "grey45",  
-    "North America"    = "grey35",  
-    "Northern Africa"   = "grey25", 
-    "Oceania"           = "grey33",
-    "South America"      = "grey30",
-    "South Asia"         = "grey70",
-    "South East Asia"    = "grey60",
-    "Southern Africa"   = "grey50",
-    "Sub-Saharan Africa" = "grey40",
-    "Western Europe" = "grey55"
+    "Central America" = "grey42",
+    "Central Asia"   = "grey35",    
+    "East Asia"       = "grey30",   
+    "Eastern Europe"   = "grey37", 
+    "Middle East"      = "grey22",  
+    "North America"    = "grey19",  
+    "Northern Africa"   = "grey13", 
+    "Oceania"           = "grey19",
+    "South America"      = "grey10",
+    "South Asia"         = "grey45",
+    "South East Asia"    = "grey38",
+    "Southern Africa"   = "grey29",
+    "Sub-Saharan Africa" = "grey23",
+    "Western Europe" = "grey35"
   )) +
   scale_linetype_manual(values = c(
     "Central America" = "dashed",
@@ -585,9 +585,9 @@ plot_gen <- ggplot(df_africa, aes(x = decade, y = gen_ii, group = iso3c, color =
 
 plot_cov_grey <- ggplot(df_africa, aes(x = decade, y = cov_ii, group = iso3c, color = log_slave_trade)) +
   geom_line(size = 0.8, alpha = 0.8) +
-  scale_color_gradient2(low = "grey80", 
-                        mid = "grey55", 
-                        high = "grey25", 
+  scale_color_gradient2(low = "grey75", 
+                        mid = "grey45", 
+                        high = "grey10", 
                         midpoint = 7, name = "Log Slave Trade") +
   scale_y_continuous(labels = scales::percent_format(scale = 1),
                      limits = c(-6, NA)) +  
@@ -608,7 +608,8 @@ plot_cov_grey <- ggplot(df_africa, aes(x = decade, y = cov_ii, group = iso3c, co
   ) +
   annotate("text", x = 1932, y = -4.5, label = "Correlation = ", color = "grey20") +
   theme_classic() + 
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        axis.title.x = element_blank())
 
 plot_gen_grey <- ggplot(df_africa, aes(x = decade, y = gen_ii, group = iso3c, color = log_slave_trade)) +
   geom_line(size = 0.8, alpha = 0.8) +
@@ -634,7 +635,8 @@ plot_gen_grey <- ggplot(df_africa, aes(x = decade, y = gen_ii, group = iso3c, co
     color = "grey20"
   ) +
   theme_classic() +
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        axis.title.x = element_blank())
 
 
 ```
@@ -661,9 +663,9 @@ include_graphics(here("results", "Fig3.png"))
 #### Grey
 
 ```{r}
-agg_png(here("results", "Fig3_grey.png"), res = 144, height = 750, width = 1200)
+agg_png(here("results", "Fig3_grey.png"), res = 144, height = 1000, width = 1000)
 
-ggarrange(plot_cov_grey, plot_gen_grey,
+ggarrange(plot_cov_grey, plot_gen_grey, ncol = 1, nrow = 2,
           common.legend = T,
           legend = "bottom") 
 
